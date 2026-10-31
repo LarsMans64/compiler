@@ -197,7 +197,7 @@ fn add_character(input: &String, tokens: &mut MatchingTokens) {
     }
 }
 
-fn add_string(input: &String, tokens: &mut MatchingTokens) {
+fn add_string(input: &String, tokens:  &mut MatchingTokens) {
     let mut chars = input.chars();
 
     if let Some('"') = chars.next() {
@@ -223,7 +223,7 @@ fn add_if_exact_match(input: &String, tokens: &mut MatchingTokens, exact: &str, 
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
     Function,
     Var,
@@ -260,4 +260,36 @@ pub enum Token {
     Character(char),
     String(String),
     Identifier(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lexer() {
+        let input = "func var funcvar=,; a_1 13 \"\" '\"' //comment \n";
+        let result = process(input);
+        let expected = vec![
+            Token::Function,
+            Token::Var,
+            Token::Identifier(String::from("funcvar")),
+            Token::Is,
+            Token::Comma,
+            Token::End,
+            Token::Identifier(String::from("a_1")),
+            Token::Integer(13),
+            Token::String(String::new()),
+            Token::Character('"'),
+        ];
+
+        assert!(result.is_ok());
+        assert_eq!(expected, result.unwrap());
+    }
+
+    #[test]
+    fn test_syntax_errors() {
+        assert!(process("% hello").is_err());
+        assert!(process("\"€\"").is_ok());
+    }
 }

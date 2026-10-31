@@ -1,12 +1,15 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::time::Instant;
 
 mod lexer;
+mod parser;
 
 fn main() {
-    let code = read_file("code.txt");
+    let now = Instant::now();
 
+    let code = read_file("code.txt");
     let result = lexer::process(code.as_str());
 
     match result {
@@ -17,6 +20,8 @@ fn main() {
         }
         Err(error) => println!("syntax error at {}:{}", error.state.line, error.state.column),
     }
+
+    println!("{:?}", now.elapsed());
 }
 
 fn read_file(name: &str) -> String {
