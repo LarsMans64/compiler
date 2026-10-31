@@ -1,0 +1,9 @@
+func abc(one, two) {
+    var q = 1 + 1 - 2; // comment here
+
+    if true {
+        println("yoyoyo");
+    }
+
+    return 100;
+}
