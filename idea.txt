@@ -7,7 +7,7 @@ func a(b, c) {
     var c = "hallo";
     c[1 + hi] = 'a';
 
-    var d = malloc(10);
+    var d = malloc(10); // does things
 
     if a == b {
         print(1);
@@ -85,25 +85,26 @@ Arg -> identifier
 Body -> Statement Body | ε
 
 Statement -> Decl end
-           | Assign end
-           | Call end
+           | identifier StatementRest
            | Return end
            | If
            | While
 
-If -> if Expr brace_open Body brace_close Else
-Else -> else If | else brace_open Body brace_close | ε
-While -> while Expr brace_open Body brace_close
+StatementRest -> Assign | Call
 
 Decl -> var identifier is Expr
-Assign -> identifier Indices is Expr
+Assign -> Indices is Expr
 Indices -> Index Indices | ε
 Index -> bracket_open Expr bracket_close
-Call -> identifier par_open ExprList par_close
+Call -> par_open ExprList par_close
 Return -> return Expr
 
 ExprList -> Expr ExprListTail | ε
 ExprListTail -> comma Expr ExprListTail | ε
+
+If -> if Expr brace_open Body brace_close Else
+Else -> else If | else brace_open Body brace_close | ε
+While -> while Expr brace_open Body brace_close
 
 Expr -> E2 E1'
 E1' -> eq E2 E1' | neq E2 E1' | ε
@@ -116,7 +117,7 @@ E4' -> and E5 E4' | ε
 E5  -> E6 E5'
 E5' -> add E6 E5' | sub E6 E5' | ε
 E6  -> E7 E6'
-E6' -> mul E7 E6' | div E7 E6' | ε
+E6' -> asterisk E7 E6' | div E7 E6' | ε
 E7  -> par_open Expr par_close 
      | not Expr
      | asterisk Expr
@@ -126,8 +127,9 @@ E7  -> par_open Expr par_close
      | boolean
      | character
      | string
-     | identifier
-     | Call
+     | identifier E7Rest
+
+E7Rest -> Call | ε
 
 
 
@@ -163,8 +165,7 @@ statement
     | if
     | while
 
-if = expression body elseif* body?
-elseif = expression body
+if = expression body body?
 
 while = expression body
 
@@ -174,7 +175,7 @@ assignment = identifier expression* expression
 
 call = identifier expression*
 
-return = expression
+return = expression?
 
 expression 
     = binaryoperator expression expression
@@ -184,9 +185,6 @@ expression
     | character
     | identifier
     | call
-    | arrayinit
-
-arrayinit = expression*
 
 binaryoperator 
     = +
@@ -207,6 +205,6 @@ unaryoperator
     = -
     | !
     | &
-    | @
+    | *
 
 

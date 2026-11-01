@@ -5,6 +5,7 @@ use std::time::Instant;
 
 mod lexer;
 mod parser;
+mod ast;
 
 fn main() {
     let now = Instant::now();
@@ -12,14 +13,22 @@ fn main() {
     let code = read_file("code.txt");
     let result = lexer::process(code.as_str());
 
-    match result {
-        Ok(tokens) => {
-            for token in tokens {
-                println!("{:?}", token);
-            }
+    let tokens = match result {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            eprintln!("Unexpected character: \"{}\" at {}:{}",
+                      error.state.remaining.chars().next().unwrap(),
+                      error.state.line,
+                      error.state.column);
+            return;
         }
-        Err(error) => println!("syntax error at {}:{}", error.state.line, error.state.column),
+    };
+
+    for token in &tokens {
+        println!("{:?}", token);
     }
+
+    let result = parser::parse_program(tokens);
 
     println!("{:?}", now.elapsed());
 }
