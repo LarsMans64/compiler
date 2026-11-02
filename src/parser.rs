@@ -1,16 +1,16 @@
 use crate::ast::{BinaryOp, Expression, Function, Program, Statement, UnaryOperator};
-use crate::lexer::Token;
+use crate::lexer::{PositionedToken, Token};
 
 pub type ParseError = String;
 
 pub struct ParseState {
-    tokens: Vec<Token>,
+    tokens: Vec<PositionedToken>,
 }
 
 impl ParseState {
-    pub fn new(vec: &Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<PositionedToken>) -> Self {
         ParseState {
-            tokens: vec.iter().rev().cloned().collect(),
+            tokens: tokens.into_iter().rev().collect(),
         }
     }
 
@@ -20,12 +20,12 @@ impl ParseState {
 
     fn peek(&self) -> Result<&Token, ParseError> {
         match self.tokens.last() {
-            Some(token) => Ok(token),
+            Some(token) => Ok(&token.token),
             None => Err(String::from("unexpected end of file")),
         }
     }
 
-    fn advance(&mut self) -> Result<Token, ParseError> {
+    fn advance(&mut self) -> Result<PositionedToken, ParseError> {
         match self.tokens.pop() {
             Some(token) => Ok(token),
             None => Err(String::from("unexpected end of file")),
@@ -34,11 +34,15 @@ impl ParseState {
 
     fn expect(&mut self, token: Token) -> Result<Token, ParseError> {
         let got = self.advance()?;
-        if token == got {
-            return Ok(got);
+        if token == got.token {
+            return Ok(got.token);
         }
-        Err(format!("expected {:?}, got {:?}", token, got))
+        Err(error_message(&token.show(), got))
     }
+}
+
+fn error_message(expected: &str, got: PositionedToken) -> String {
+    format!("expected {} at {}:{}, got {}", expected, got.line, got.column, got.token.show())
 }
 
 pub fn parse_program(state: &mut ParseState) -> Result<Program, ParseError> {
@@ -125,7 +129,7 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
             Ok(Statement::Assignment {variable: name, indices, expression})
         },
         Token::BraceOpen => Ok(Statement::Body(parse_body(state)?)),
-        _ => Err(format!("expected statement, got {:?}", token)),
+        _ => Err(error_message("statement", state.advance()?)),
     }
 }
 
@@ -156,11 +160,11 @@ fn parse_args(state: &mut ParseState) -> Result<Vec<String>, ParseError> {
 }
 
 fn parse_identifier(state: &mut ParseState) -> Result<String, ParseError> {
-    let token = state.advance()?;
-    if let Token::Identifier(name) = token {
+    let got = state.advance()?;
+    if let Token::Identifier(name) = got.token {
         return Ok(name);
     }
-    Err(format!("expected identifier, got {:?}", token))
+    Err(error_message("identifier", got))
 }
 
 fn parse_expr(state: &mut ParseState) -> Result<Expression, ParseError> {
@@ -236,7 +240,7 @@ fn parse_unit_expr(state: &mut ParseState) -> Result<Expression, ParseError> {
             }
             Ok(Expression::Variable {name})
         }
-        token => Err(format!("expression expected, got {:?}", token)),
+        _ => Err(error_message("expression", state.advance()?)),
     }
 }
 

@@ -26,12 +26,12 @@ impl LexerState {
     }
 }
 
-pub fn process(input: &str) -> Result<Vec<Token>, LexerError> {
-    let mut tokens: Vec<Token> = Vec::new();
+pub fn process(input: &str) -> Result<Vec<PositionedToken>, LexerError> {
+    let mut tokens: Vec<PositionedToken> = Vec::new();
 
     let mut state = LexerState {
         remaining: String::from(input),
-        line: 0,
+        line: 1,
         column: 0,
     };
 
@@ -51,7 +51,11 @@ pub fn process(input: &str) -> Result<Vec<Token>, LexerError> {
 
         match longest_match {
             Some((n, token)) => {
-                tokens.push(token.clone());
+                tokens.push(PositionedToken {
+                    token: token.clone(),
+                    column: state.column,
+                    line: state.line,
+                });
                 state.advance(*n);
                 continue;
             }
@@ -223,6 +227,13 @@ fn add_if_exact_match(input: &str, tokens: &mut MatchingTokens, exact: &str, tok
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PositionedToken {
+    pub token: Token,
+    pub column: usize,
+    pub line: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
     Function,
     Var,
@@ -247,7 +258,6 @@ pub enum Token {
     Slash,
     Caret,
     Star,
-    Address,
     ParOpen,
     ParClose,
     BracketOpen,
@@ -259,6 +269,47 @@ pub enum Token {
     Character(char),
     String(String),
     Identifier(String),
+}
+
+impl Token {
+    pub fn show(&self) -> String {
+        String::from(match self {
+            Token::Function => String::from("'func'"),
+            Token::Var => String::from("'var'"),
+            Token::Return => String::from("'return'"),
+            Token::If => String::from("'if'"),
+            Token::Else => String::from("'else'"),
+            Token::While => String::from("'while'"),
+            Token::Is => String::from("'='"),
+            Token::Comma => String::from("','"),
+            Token::End => String::from("';'"),
+            Token::Eq => String::from("'=='"),
+            Token::Neq => String::from("'!='"),
+            Token::Gt => String::from("'>'"),
+            Token::Lt => String::from("'<'"),
+            Token::Gte => String::from("'>='"),
+            Token::Lte => String::from("'<='"),
+            Token::And => String::from("'&'"),
+            Token::Or => String::from("'|'"),
+            Token::Not => String::from("'!'"),
+            Token::Plus => String::from("'+'"),
+            Token::Minus => String::from("'-'"),
+            Token::Slash => String::from("'/'"),
+            Token::Caret => String::from("'^'"),
+            Token::Star => String::from("'*'"),
+            Token::ParOpen => String::from("'('"),
+            Token::ParClose => String::from("')'"),
+            Token::BracketOpen => String::from("'['"),
+            Token::BracketClose => String::from("']'"),
+            Token::BraceOpen => String::from("'{'"),
+            Token::BraceClose => String::from("'}'"),
+            Token::Boolean(b) => if *b {String::from("'true'")} else {String::from("'false'")},
+            Token::Integer(i) => format!("integer {}", i),
+            Token::Character(c) => format!("character '{}'", c),
+            Token::String(s) => format!("string \"{}\"", s),
+            Token::Identifier(s) => format!("identifier '{}'", s),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -283,7 +334,7 @@ mod tests {
         ];
 
         assert!(result.is_ok());
-        assert_eq!(expected, result.unwrap());
+        assert_eq!(expected, result.unwrap().into_iter().map(|pt| pt.token).collect::<Vec<Token>>());
     }
 
     #[test]

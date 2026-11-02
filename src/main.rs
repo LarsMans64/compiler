@@ -25,11 +25,11 @@ fn main() {
         }
     };
 
-    // for token in &tokens {
-    //     println!("{:?}", token);
-    // }
+    for token in &tokens {
+        println!("{:?}", token);
+    }
 
-    let mut state = parser::ParseState::new(&tokens);
+    let mut state = parser::ParseState::new(tokens);
     let program = match parser::parse_program(&mut state) {
         Ok(program) => program,
         Err(error) => {

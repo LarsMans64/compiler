@@ -17,4 +17,6 @@ func a(b, c) {
     while i < 4 { i = i + 1; }
 
     return file("yo.txt");
+
+    return 1-2-3;
 }
