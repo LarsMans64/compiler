@@ -183,7 +183,7 @@ statement
     | if
     | while
 
-if = expression body body?
+if = expression body body
 
 while = expression body
 

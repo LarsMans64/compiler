@@ -14,26 +14,22 @@ impl ParseState {
         }
     }
 
-    fn done(&self) -> bool {
-        self.tokens.len() == 0
+    fn peek(&self) -> &Token {
+        if let Some(token) = self.tokens.last() {
+            return &token.token;
+        }
+        panic!("should not continue parsing after end of file has been encountered")
     }
 
-    fn peek(&self) -> Result<&Token, ParseError> {
-        match self.tokens.last() {
-            Some(token) => Ok(&token.token),
-            None => Err(String::from("unexpected end of file")),
+    fn advance(&mut self) -> PositionedToken {
+        if let Some(token) = self.tokens.pop() {
+            return token;
         }
-    }
-
-    fn advance(&mut self) -> Result<PositionedToken, ParseError> {
-        match self.tokens.pop() {
-            Some(token) => Ok(token),
-            None => Err(String::from("unexpected end of file")),
-        }
+        panic!("should not continue parsing after end of file has been encountered")
     }
 
     fn expect(&mut self, token: Token) -> Result<Token, ParseError> {
-        let got = self.advance()?;
+        let got = self.advance();
         if token == got.token {
             return Ok(got.token);
         }
@@ -47,7 +43,7 @@ fn error_message(expected: &str, got: PositionedToken) -> String {
 
 pub fn parse_program(state: &mut ParseState) -> Result<Program, ParseError> {
     let mut program = Program::new();
-    while !state.done() {
+    while state.peek() != &Token::EndOfFile {
         let function = parse_function(state)?;
         program.push(function);
     }
@@ -66,8 +62,8 @@ fn parse_body(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
     state.expect(Token::BraceOpen)?;
     let mut statements = Vec::new();
     loop {
-        if let Token::BraceClose = state.peek()? {
-            state.advance()?;
+        if let Token::BraceClose = state.peek() {
+            state.advance();
             break;
         }
         statements.push(parse_statement(state)?);
@@ -76,10 +72,10 @@ fn parse_body(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
 }
 
 fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
-    let token = state.peek()?;
+    let token = state.peek();
     match token {
         Token::Var => {
-            state.advance()?;
+            state.advance();
             let name = parse_identifier(state)?;
             state.expect(Token::Is)?;
             let expr = parse_expr(state)?;
@@ -87,9 +83,9 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
             Ok(Statement::Declaration {variable: name, expression: expr})
         }
         Token::Return => {
-            state.advance()?;
-            if let Token::End = state.peek()? {
-                state.advance()?;
+            state.advance();
+            if let Token::End = state.peek() {
+                state.advance();
                 return Ok(Statement::Return(None));
             }
             let expression = parse_expr(state)?;
@@ -98,18 +94,18 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
         }
         Token::If => parse_if(state),
         Token::While => {
-            state.advance()?;
+            state.advance();
             let condition = parse_expr(state)?;
             let then = parse_body(state)?;
             Ok(Statement::While {condition, then})
         }
         Token::Identifier(name) => {
             let name = name.clone();
-            state.advance()?;
+            state.advance();
 
             // Call
-            if let Token::ParOpen = state.peek()? {
-                state.advance()?;
+            if let Token::ParOpen = state.peek() {
+                state.advance();
                 let args = parse_list(state, parse_expr, Token::ParClose)?;
                 state.expect(Token::ParClose)?;
                 state.expect(Token::End)?;
@@ -118,8 +114,8 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
 
             // Assign
             let mut indices = Vec::new();
-            while let Token::BracketOpen = state.peek()? {
-                state.advance()?;
+            while let Token::BracketOpen = state.peek() {
+                state.advance();
                 indices.push(parse_expr(state)?);
                 state.expect(Token::BracketClose)?;
             }
@@ -129,7 +125,7 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
             Ok(Statement::Assignment {variable: name, indices, expression})
         },
         Token::BraceOpen => Ok(Statement::Body(parse_body(state)?)),
-        _ => Err(error_message("statement", state.advance()?)),
+        _ => Err(error_message("statement", state.advance())),
     }
 }
 
@@ -142,11 +138,11 @@ fn parse_if(state: &mut ParseState) -> Result<Statement, ParseError> {
 }
 
 fn parse_else(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
-    if state.peek()? != &Token::Else {
+    if state.peek() != &Token::Else {
         return Ok(Vec::new());
     }
-    state.advance()?;
-    if let Token::If = state.peek()? {
+    state.advance();
+    if let Token::If = state.peek() {
         return Ok(vec![parse_if(state)?]);
     }
     Ok(parse_body(state)?)
@@ -160,7 +156,7 @@ fn parse_args(state: &mut ParseState) -> Result<Vec<String>, ParseError> {
 }
 
 fn parse_identifier(state: &mut ParseState) -> Result<String, ParseError> {
-    let got = state.advance()?;
+    let got = state.advance();
     if let Token::Identifier(name) = got.token {
         return Ok(name);
     }
@@ -196,7 +192,7 @@ fn parse_exponential_expr(state: &mut ParseState) -> Result<Expression, ParseErr
 }
 
 fn parse_unary_expr(state: &mut ParseState) -> Result<Expression, ParseError> {
-    match state.peek()? {
+    match state.peek() {
         Token::Minus => unary(state, UnaryOperator::Negate),
         Token::Not => unary(state, UnaryOperator::Invert),
         Token::Star => unary(state, UnaryOperator::Dereference),
@@ -206,41 +202,41 @@ fn parse_unary_expr(state: &mut ParseState) -> Result<Expression, ParseError> {
 }
 
 fn parse_unit_expr(state: &mut ParseState) -> Result<Expression, ParseError> {
-    match state.peek()?.clone() {
+    match state.peek().clone() {
         Token::ParOpen => {
-            state.advance()?;
+            state.advance();
             let inner = parse_expr(state)?;
             state.expect(Token::ParClose)?;
             Ok(inner)
         }
         Token::Boolean(value) => {
-            state.advance()?;
-            Ok(Expression::Boolean {value})
+            state.advance();
+            Ok(Expression::Boolean(value))
         }
         Token::Integer(value) => {
-            state.advance()?;
-            Ok(Expression::Integer {value})
+            state.advance();
+            Ok(Expression::Integer(value))
         }
         Token::Character(value) => {
-            state.advance()?;
-            Ok(Expression::Character {value})
+            state.advance();
+            Ok(Expression::Character(value))
         }
         Token::String(value) => {
-            state.advance()?;
-            Ok(Expression::String {value})
+            state.advance();
+            Ok(Expression::String(value))
         }
         Token::Identifier(name) => {
-            state.advance()?;
+            state.advance();
             let name = name.clone();
-            if let Token::ParOpen = state.peek()? {
-                state.advance()?;
+            if let Token::ParOpen = state.peek() {
+                state.advance();
                 let args = parse_list(state, parse_expr, Token::ParClose)?;
                 state.expect(Token::ParClose)?;
-                return Ok(Expression::Call {function: name, args});
+                return Ok(Expression::Call(name, args));
             }
-            Ok(Expression::Variable {name})
+            Ok(Expression::Variable(name))
         }
-        _ => Err(error_message("expression", state.advance()?)),
+        _ => Err(error_message("expression", state.advance())),
     }
 }
 
@@ -248,10 +244,10 @@ fn parse_list<T, F>(state: &mut ParseState, inner: F, terminator: Token) -> Resu
     where F: Fn(&mut ParseState) -> Result<T, ParseError>
 {
     let mut items = Vec::new();
-    if state.peek()? != &terminator {
+    if state.peek() != &terminator {
         items.push(inner(state)?);
-        while let Token::Comma = state.peek()? {
-            state.advance()?;
+        while let Token::Comma = state.peek() {
+            state.advance();
             items.push(inner(state)?);
         }
     }
@@ -263,26 +259,19 @@ where F: Fn(&mut ParseState) -> Result<Expression, ParseError>
 {
     let mut expr = inner(state)?;
     loop {
-        let next_token = state.peek()?.clone();
+        let next_token = state.peek().clone();
         if !ops.contains(&next_token) {
             break;
         }
-        state.advance()?;
-        expr = Expression::BinaryOperation {
-            operator: token_to_binary_op(&next_token).clone(),
-            left: Box::new(expr),
-            right: Box::new(inner(state)?),
-        };
+        state.advance();
+        expr = Expression::BinaryOperation(Box::new(expr), token_to_binary_op(&next_token).clone(), Box::new(inner(state)?));
     }
     Ok(expr)
 }
 
 fn unary(state: &mut ParseState, operator: UnaryOperator) -> Result<Expression, ParseError> {
-    state.advance()?;
-    Ok(Expression::UnaryOperation {
-        operator,
-        operand: Box::new(parse_unit_expr(state)?),
-    })
+    state.advance();
+    Ok(Expression::UnaryOperation(operator, Box::new(parse_unit_expr(state)?)))
 }
 
 fn token_to_binary_op(token: &Token) -> BinaryOp {
@@ -295,11 +284,53 @@ fn token_to_binary_op(token: &Token) -> BinaryOp {
         Token::Lte => BinaryOp::Lte,
         Token::And => BinaryOp::And,
         Token::Or => BinaryOp::Or,
-        Token::Plus => BinaryOp::Add,
-        Token::Star => BinaryOp::Multiply,
-        Token::Minus => BinaryOp::Subtract,
-        Token::Slash => BinaryOp::Divide,
-        Token::Caret => BinaryOp::Power,
+        Token::Plus => BinaryOp::Addition,
+        Token::Star => BinaryOp::Multiplication,
+        Token::Minus => BinaryOp::Subtraction,
+        Token::Slash => BinaryOp::Division,
+        Token::Caret => BinaryOp::Exponentiation,
         _ => panic!("unexpected token {:?}", token)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer;
+
+    #[test]
+    fn test_expr_order() {
+        let code = lexer::process("2 == 1 + 1 * 1").unwrap();
+        let expected = Expression::BinaryOperation(
+            Box::new(Expression::Integer(2)),
+            BinaryOp::Eq,
+            Box::new(Expression::BinaryOperation(
+                Box::new(Expression::Integer(1)),
+                BinaryOp::Addition,
+                Box::new(Expression::BinaryOperation (
+                    Box::new(Expression::Integer(1)),
+                    BinaryOp::Multiplication,
+                    Box::new(Expression::Integer(1)),
+                )),
+            )),
+        );
+
+        assert_eq!(parse_expr(&mut ParseState::new(code)).unwrap(), expected)
+    }
+
+    #[test]
+    fn test_expr_left_recursion() {
+        let code = lexer::process("1 & 2 & 3").unwrap();
+        let expected = Expression::BinaryOperation(
+            Box::new(Expression::BinaryOperation (
+                Box::new(Expression::Integer(1)),
+                BinaryOp::And,
+                Box::new(Expression::Integer(2)),
+            )),
+            BinaryOp::And,
+            Box::new(Expression::Integer(3)),
+        );
+
+        assert_eq!(parse_expr(&mut ParseState::new(code)).unwrap(), expected)
     }
 }

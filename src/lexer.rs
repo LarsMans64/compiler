@@ -66,6 +66,12 @@ pub fn process(input: &str) -> Result<Vec<PositionedToken>, LexerError> {
             }
         }
     }
+    
+    tokens.push(PositionedToken {
+        token: Token::EndOfFile,
+        column: state.column,
+        line: state.line,
+    });
 
     Ok(tokens)
 }
@@ -235,6 +241,7 @@ pub struct PositionedToken {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
+    EndOfFile,
     Function,
     Var,
     Return,
@@ -273,7 +280,8 @@ pub enum Token {
 
 impl Token {
     pub fn show(&self) -> String {
-        String::from(match self {
+        match self {
+            Token::EndOfFile => String::from("end of file"),
             Token::Function => String::from("'func'"),
             Token::Var => String::from("'var'"),
             Token::Return => String::from("'return'"),
@@ -308,7 +316,7 @@ impl Token {
             Token::Character(c) => format!("character '{}'", c),
             Token::String(s) => format!("string \"{}\"", s),
             Token::Identifier(s) => format!("identifier '{}'", s),
-        })
+        }
     }
 }
 

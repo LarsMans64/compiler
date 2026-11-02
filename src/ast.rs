@@ -18,25 +18,25 @@ pub enum Statement {
     Body(Vec<Statement>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
-    BinaryOperation { operator: BinaryOp, left: Box<Expression>, right: Box<Expression> },
-    UnaryOperation { operator: UnaryOperator, operand: Box<Expression> },
-    Call { function: String, args: Vec<Expression> },
-    Integer { value: u32 },
-    Boolean { value: bool },
-    Character { value: char },
-    String { value: String },
-    Variable { name: String },
+    BinaryOperation(Box<Expression>, BinaryOp, Box<Expression>),
+    UnaryOperation(UnaryOperator, Box<Expression>),
+    Call(String, Vec<Expression>),
+    Integer(u32),
+    Boolean(bool),
+    Character(char),
+    String(String),
+    Variable(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOp {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Power,
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
+    Exponentiation,
     And,
     Or,
     Eq,
@@ -47,7 +47,7 @@ pub enum BinaryOp {
     Gte,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Negate,
     Invert,
