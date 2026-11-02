@@ -93,7 +93,7 @@ fn ignore(input: &String) -> Option<usize> {
 
 type MatchingTokens = Vec<(usize, Token)>;
 
-fn match_tokens(input: &String) -> MatchingTokens {
+fn match_tokens(input: &str) -> MatchingTokens {
     let mut tokens: MatchingTokens = Vec::new();
 
     add_identifier(input, &mut tokens);
@@ -143,7 +143,7 @@ fn match_tokens(input: &String) -> MatchingTokens {
     tokens
 }
 
-fn add_identifier(input: &String, tokens: &mut MatchingTokens) {
+fn add_identifier(input: &str, tokens: &mut MatchingTokens) {
     let chars = input.chars();
 
     let mut identifier: String = String::new();
@@ -165,7 +165,7 @@ fn add_identifier(input: &String, tokens: &mut MatchingTokens) {
     }
 }
 
-fn add_integer(input: &String, tokens: &mut MatchingTokens) {
+fn add_integer(input: &str, tokens: &mut MatchingTokens) {
     let chars = input.chars();
 
     let mut digits = 0;
@@ -183,7 +183,7 @@ fn add_integer(input: &String, tokens: &mut MatchingTokens) {
     }
 }
 
-fn add_character(input: &String, tokens: &mut MatchingTokens) {
+fn add_character(input: &str, tokens: &mut MatchingTokens) {
     let mut chars = input.chars();
 
     let first = chars.next();
@@ -197,7 +197,7 @@ fn add_character(input: &String, tokens: &mut MatchingTokens) {
     }
 }
 
-fn add_string(input: &String, tokens:  &mut MatchingTokens) {
+fn add_string(input: &str, tokens:  &mut MatchingTokens) {
     let mut chars = input.chars();
 
     if let Some('"') = chars.next() {
@@ -217,7 +217,7 @@ fn add_string(input: &String, tokens:  &mut MatchingTokens) {
     }
 }
 
-fn add_if_exact_match(input: &String, tokens: &mut MatchingTokens, exact: &str, token: Token) {
+fn add_if_exact_match(input: &str, tokens: &mut MatchingTokens, exact: &str, token: Token) {
     if input.starts_with(exact) {
         tokens.push((exact.len(), token));
     }

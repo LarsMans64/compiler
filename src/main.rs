@@ -6,6 +6,7 @@ use std::time::Instant;
 mod lexer;
 mod parser;
 mod ast;
+mod assembler;
 
 fn main() {
     let now = Instant::now();
@@ -29,6 +30,18 @@ fn main() {
     }
 
     let result = parser::parse_program(tokens);
+    
+    let program = match result {
+        Ok(program) => program,
+        Err(error) => {
+            eprintln!("Syntax error at {}:{}",
+                      error.line,
+                      error.column);
+            return;
+        }
+    };
+    
+    assembler::execute(todo!(), |c| print!("{}", c));
 
     println!("{:?}", now.elapsed());
 }

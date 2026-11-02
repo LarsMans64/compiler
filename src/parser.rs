@@ -1,27 +1,224 @@
+use crate::ast::{Function, Program, Statement};
+use crate::lexer::Token;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
-use crate::ast::Program;
-use crate::lexer::Token;
 
-pub struct ParseError {
-    line: usize,
-    column: usize,
-    found: Token,
+pub type ParseError = String;
+
+struct ParseState {
+    tokens: Vec<Token>,
 }
 
-pub fn parse_program(tokens: Vec<Token>) -> Result<Program, ParseError> {
-    let rules = grammar_rules();
-    
+impl ParseState {
+    fn new(vec: &Vec<Token>) -> Self {
+        ParseState {
+            tokens: vec.iter().rev().cloned().collect(),
+        }
+    }
+
+    fn done(&self) -> bool {
+        self.tokens.len() == 0
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.last()
+    }
+
+    fn advance(&mut self) -> Result<Token, ParseError> {
+        match self.tokens.pop() {
+            Some(token) => Ok(token),
+            None => Err(String::from("Reached end of file")),
+        }
+    }
+
+    fn expect(&mut self, token: Token) -> Result<Token, ParseError> {
+        let got = self.advance()?;
+        if token == got {
+            return Ok(got);
+        }
+        Err(format!("expected {:?}, got {:?}", token, got))
+    }
+}
+
+pub fn parse_program(state: &mut ParseState) -> Result<Program, ParseError> {
+    let mut program = Program::new();
+    while !state.done() {
+        let function = parse_function(state)?;
+        program.push(function);
+    }
+    Ok(program)
+}
+
+fn parse_function(state: &mut ParseState) -> Result<Function, ParseError> {
+    state.expect(Token::Function)?;
+    let name = parse_identifier(state)?;
+    let args = parse_args(state)?;
+    let body = parse_body(state)?;
+    Ok(Function { name, args, body })
+}
+
+fn parse_body(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
+    state.expect(Token::BraceOpen)?;
+    let mut statements = Vec::new();
+    loop {
+        if let Some(Token::BraceClose) = state.peek() {
+            state.advance()?;
+            break;
+        }
+        statements.push(parse_statement(state)?);
+    }
+    Ok(statements)
+}
+
+fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
+    if let Some(token) = state.peek() {
+        return match token {
+            Token::Var => {
+                let name = parse_identifier(state)?;
+                state.expect(Token::Is)?;
+                let expr = parse_expression(state)?;
+                Ok(Statement::Declaration {variable: name, expression: expr})
+            },
+            Token::Return => {
+                state.advance()?;
+                parse_expression(state)
+            }
+            Token::If => parse_if(state),
+            Token::Identifier(_) => ,
+            _ => Err(format!("expected statement, got {:?}", token)),
+        }
+    }
+
     todo!()
 }
 
-fn first_table() -> HashMap<NonTerminal, Vec<Option<Terminal>>> {
-    todo!()
+fn parse_args(state: &mut ParseState) -> Result<Vec<String>, ParseError> {
+    state.expect(Token::ParOpen)?;
+    let mut args = Vec::new();
+    if let Some(Token::Identifier(_)) = state.peek() {
+        args.push(parse_identifier(state)?);
+        loop {
+            if let Some(Token::Comma) = state.peek() {
+                state.advance()?;
+                args.push(parse_identifier(state)?);
+            } else {
+                break;
+            }
+        }
+    }
+    state.expect(Token::ParClose)?;
+    Ok(args)
 }
 
-fn follow_table() -> HashMap<NonTerminal, Vec<Option<Terminal>>> {
-    todo!()
+fn parse_identifier(state: &mut ParseState) -> Result<String, ParseError> {
+    let token = state.advance()?;
+    if let Token::Identifier(name) = token {
+        return Ok(name);
+    }
+    Err(format!("expected identifier, got {:?}", token))
 }
+
+
+// type FirstTable = (HashMap<NonTerminal, HashSet<Terminal>>, HashSet<NonTerminal>);
+//
+// fn first_table(rules: &GrammarRules) -> FirstTable {
+//     let mut first: HashMap<NonTerminal, HashSet<Terminal>> = HashMap::new();
+//     let mut has_epsilon: HashSet<NonTerminal> = HashSet::new();
+//
+//     for (non_terminal, _) in rules {
+//         first.insert(non_terminal.clone(), HashSet::new());
+//     }
+//
+//     let mut changed = true;
+//     while changed {
+//         changed = false;
+//
+//         for (key, right_sides) in rules {
+//             for right_side in right_sides {
+//                 let mut all_epsilon = true;
+//
+//                 for symbol in right_side {
+//                     match symbol {
+//                         GrammarSymbol::Terminal(terminal) => {
+//                             if first.get_mut(key).unwrap().insert(terminal.clone()) {
+//                                 changed = true;
+//                             }
+//                             all_epsilon = false;
+//                             break;
+//                         }
+//                         GrammarSymbol::NonTerminal(non_terminal) => {
+//                             let terminals = match first.get(non_terminal) {
+//                                 Some(t) => t.clone(),
+//                                 None => break,
+//                             };
+//                             let set = first.get_mut(key).unwrap();
+//
+//                             for terminal in terminals {
+//                                 if set.insert(terminal.clone()) {
+//                                     changed = true;
+//                                 }
+//                             }
+//
+//                             if !has_epsilon.contains(&non_terminal) {
+//                                 all_epsilon = false;
+//                             }
+//                         }
+//                         GrammarSymbol::Epsilon => {}
+//                     }
+//                 }
+//
+//                 if all_epsilon && has_epsilon.insert(key.clone()) {
+//                     changed = true;
+//                 }
+//             }
+//         }
+//     }
+//
+//     (first, has_epsilon)
+// }
+//
+// fn follow_table(rules: &GrammarRules, (first, has_empty): &FirstTable) -> HashMap<NonTerminal, HashSet<Terminal>> {
+//     let mut follow: HashMap<NonTerminal, HashSet<Terminal>> = HashMap::new();
+//     let mut has_eof: HashSet<NonTerminal> = HashSet::from([NonTerminal::Program]);
+//     let mut has_epsilon: HashSet<NonTerminal> = HashSet::new();
+//
+//     for (non_terminal, _) in rules {
+//         follow.insert(non_terminal.clone(), HashSet::new());
+//     }
+//
+//     let mut changed = true;
+//     while changed {
+//         changed = false;
+//         for (key, right_sides) in rules {
+//             for right_side in right_sides {
+//                 if let GrammarSymbol::NonTerminal(nt) = right_side.last().unwrap() {
+//                     let terminals = follow.get(key).unwrap().clone();
+//                     let beta_terminals = follow.get_mut(nt).unwrap();
+//                     for terminal in terminals {
+//                         if beta_terminals.insert(terminal) {
+//                             changed = true;
+//                         };
+//                     }
+//                     if has_epsilon.contains(key) && has_epsilon.insert(nt.clone()) {
+//                         changed = true;
+//                     }
+//                 };
+//
+//                 let mut trailer = follow.get(key).unwrap().clone();
+//
+//                 for i in right_side.len() - 1..2 {
+//                     if let GrammarSymbol::NonTerminal(nt) = &right_side[i] {
+//                         if has_epsilon.contains(nt) {
+//
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//
+//     todo!()
+// }
 
 type RightSide = Vec<GrammarSymbol>;
 
@@ -34,7 +231,7 @@ enum GrammarSymbol {
     Epsilon,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 enum NonTerminal {
     Program,
     Function,
@@ -71,7 +268,7 @@ enum NonTerminal {
     E7Rest,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Terminal {
     Function,
     Var,

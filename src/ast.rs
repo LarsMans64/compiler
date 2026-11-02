@@ -1,11 +1,9 @@
-use std::fmt::{Display, Formatter};
-
 pub type Program = Vec<Function>;
 
 pub struct Function {
-    name: String,
-    args: Vec<String>,
-    body: Vec<Statement>,
+    pub name: String,
+    pub args: Vec<String>,
+    pub body: Vec<Statement>,
 }
 
 pub enum Statement {

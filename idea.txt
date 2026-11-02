@@ -23,7 +23,7 @@ func a(b, c) {
 
 
 
-=== lexer ===
+=== tokens ===
 
 func = "func"
 var = "var"
@@ -72,7 +72,88 @@ whitespace = " " | "\n"         -> ignore
 
 
 
-=== parser ===
+=== context-free grammar ===
+
+Program -> Function*
+
+Function -> func identifier Args Body
+
+Args -> par_open (identifier (comma identifier)*)? par_close
+
+Body -> brace_open Statement* brace_close
+
+Statement -> Decl end
+           | Assign end
+           | Return end
+           | If
+           | While
+           | Call
+           | Body
+
+Decl -> var identifier is Expr
+Assign -> identifier Index* is Expr
+Call -> identifier par_open ExprList? par_close
+Return -> return Expr
+
+Index -> bracket_open Expr bracket_close
+ExprList -> Expr (comma Expr)*
+
+If -> if Expr Body Else?
+Else -> else If | else Body
+While -> while Expr Body
+
+Expr
+    : AndExpr
+    | Expr or AndExpr
+
+AndExpr
+    : EqualityExpr
+    | AndExpr and EqualityExpr
+
+EqualityExpr
+    : RelationExpr
+    | EqualityExpr eq RelationExpr
+    | EqualityExpr neq RelationExpr
+
+RelationExpr
+    : AdditiveExpr
+    | RelationExpr lt AdditiveExpr
+    | RelationExpr gt AdditiveExpr
+    | RelationExpr lte AdditiveExpr
+    | RelationExpr gte AdditiveExpr
+
+AdditiveExpr
+    : multiplicativeExpr
+    | AdditiveExpr add MultiplicativeExpr
+    | AdditiveExpr sub MultiplicativeExpr
+
+MultiplicativeExpr
+    : ExponentialExpr
+    | MultiplicativeExpr mul ExponentialExpr
+    | MultiplicativeExpr div ExponentialExpr
+
+ExponentialExpr
+    : UnaryExpr
+    | ExponentialExpr pow UnaryExpr
+
+UnaryExpr
+    : UnitExpr
+    | sub UnitExpr
+    | not UnitExpr
+    | mul UnitExpr
+    | addr UnitExpr
+
+UnitExpr
+    : par_open Expr par_close
+    | integer
+    | character
+    | string
+    | identifier
+    | Call
+
+
+
+=== grammar ===
 
 Program -> Function Program | ε
 
@@ -135,10 +216,10 @@ E7Rest -> Call | ε
 
 === Order of operations ===
 
-== != 
-> < >= =<
 |
 &
+== != 
+> < >= =<
 + -
 * /
 ^
