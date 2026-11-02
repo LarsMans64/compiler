@@ -72,7 +72,7 @@ whitespace = " " | "\n"         -> ignore
 
 
 
-=== context-free grammar ===
+=== grammar ===
 
 Program -> Function*
 
@@ -84,10 +84,10 @@ Body -> brace_open Statement* brace_close
 
 Statement -> Decl end
            | Assign end
+           | Call end
            | Return end
            | If
            | While
-           | Call
            | Body
 
 Decl -> var identifier is Expr
@@ -145,72 +145,11 @@ UnaryExpr
 
 UnitExpr
     : par_open Expr par_close
+    | Call
     | integer
     | character
     | string
     | identifier
-    | Call
-
-
-
-=== grammar ===
-
-Program -> Function Program | ε
-
-Function -> func identifier par_open Args par_close brace_open Body brace_close
-
-Args -> Arg ArgsTail | ε
-ArgsTail -> comma Arg ArgsTail | ε
-Arg -> identifier
-
-Body -> Statement Body | ε
-
-Statement -> Decl end
-           | identifier StatementRest
-           | Return end
-           | If
-           | While
-
-StatementRest -> Assign | Call
-
-Decl -> var identifier is Expr
-Assign -> Indices is Expr
-Indices -> Index Indices | ε
-Index -> bracket_open Expr bracket_close
-Call -> par_open ExprList par_close
-Return -> return Expr
-
-ExprList -> Expr ExprListTail | ε
-ExprListTail -> comma Expr ExprListTail | ε
-
-If -> if Expr brace_open Body brace_close Else
-Else -> else If | else brace_open Body brace_close | ε
-While -> while Expr brace_open Body brace_close
-
-Expr -> E2 E1'
-E1' -> eq E2 E1' | neq E2 E1' | ε
-E2  -> E3 E2'
-E2' -> gt E3 E2' | lt E3 E2' | gte E3 E2' | lte E3 E2' | ε
-E3  -> E4 E3'
-E3' -> or E4 E3' | ε
-E4  -> E5 E4'
-E4' -> and E5 E4' | ε
-E5  -> E6 E5'
-E5' -> add E6 E5' | sub E6 E5' | ε
-E6  -> E7 E6'
-E6' -> asterisk E7 E6' | div E7 E6' | ε
-E7  -> par_open Expr par_close 
-     | not Expr
-     | asterisk Expr
-     | address Expr
-     | integer
-     | sub integer
-     | boolean
-     | character
-     | string
-     | identifier E7Rest
-
-E7Rest -> Call | ε
 
 
 

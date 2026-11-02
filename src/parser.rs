@@ -1,4 +1,4 @@
-use crate::ast::{Function, Program, Statement};
+use crate::ast::{Expression, Function, Program, Statement};
 use crate::lexer::Token;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
@@ -74,21 +74,68 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
     if let Some(token) = state.peek() {
         return match token {
             Token::Var => {
+                state.advance()?;
                 let name = parse_identifier(state)?;
                 state.expect(Token::Is)?;
                 let expr = parse_expression(state)?;
+                state.expect(Token::End)?;
                 Ok(Statement::Declaration {variable: name, expression: expr})
-            },
+            }
             Token::Return => {
                 state.advance()?;
-                parse_expression(state)
+                if let Some(Token::End) = state.peek() {
+                    state.advance()?;
+                    return Ok(Statement::Return(None));
+                }
+                let expression = parse_expression(state)?;
+                state.expect(Token::End)?;
+                Ok(Statement::Return(Some(expression)))
             }
             Token::If => parse_if(state),
-            Token::Identifier(_) => ,
+            Token::While => {
+                state.advance()?;
+                let condition = parse_expression(state)?;
+                let then = parse_body(state)?;
+                Ok(Statement::While {condition, then})
+            }
+            Token::BraceOpen => Ok(Statement::Body(parse_body(state)?)),
+            Token::Identifier(_) => {
+                let name = parse_identifier(state)?;
+                if let Some(Token::ParOpen) = state.peek() {
+                    state.advance()?;
+                    state.expect(Token::ParOpen)?;
+                    let args = parse_expression_list(state)?;
+                    state.expect(Token::ParClose)?;
+                    return Ok(Statement::Call {function: name, args});
+                }
+
+                let mut indices = Vec::new();
+                while let Some(Token::BracketOpen) = state.peek() {
+                    state.advance()?;
+                    indices.push(parse_expression(state)?);
+                    state.expect(Token::BracketClose)?;
+                }
+                state.expect(Token::Is)?;
+                let expression = parse_expression(state)?;
+                state.expect(Token::End)?;
+                Ok(Statement::Assignment {variable: name, indices, expression})
+            },
             _ => Err(format!("expected statement, got {:?}", token)),
         }
     }
 
+    todo!()
+}
+
+fn parse_if(state: &mut ParseState) -> Result<Statement, ParseError> {
+    todo!()
+}
+
+fn parse_expression_list(state: &mut ParseState) -> Result<Vec<Expression>, ParseError> {
+    todo!()
+}
+
+fn parse_expression(state: &mut ParseState) -> Result<Expression, ParseError> {
     todo!()
 }
 
