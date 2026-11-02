@@ -45,13 +45,11 @@ lte = "<="
 and = "&"
 or = "|"
 not = "!"
-add = "+"
-sub = "-"
-div = "/"
-pow = "^"
-
-asterisk = "*"
-address = "&"
+plus = "+"
+minus = "-"
+star = "*"
+slash = "/"
+caret = "^"
 
 par_open = "("
 par_close = ")"
@@ -91,62 +89,62 @@ Statement -> Decl end
            | Body
 
 Decl -> var identifier is Expr
-Assign -> identifier Index* is Expr
-Call -> identifier par_open ExprList? par_close
+Assign -> identifier (bracket_open Expr bracket_close)* is Expr
+Call -> identifier par_open (Expr (comma Expr)*)? par_close
 Return -> return Expr
 
-Index -> bracket_open Expr bracket_close
-ExprList -> Expr (comma Expr)*
-
 If -> if Expr Body Else?
-Else -> else If | else Body
+Else ->
+    | else If
+    | else Body
 While -> while Expr Body
 
-Expr
-    : AndExpr
+Expr ->
+    | AndExpr
     | Expr or AndExpr
 
-AndExpr
-    : EqualityExpr
+AndExpr ->
+    | EqualityExpr
     | AndExpr and EqualityExpr
 
-EqualityExpr
-    : RelationExpr
+EqualityExpr ->
+    | RelationExpr
     | EqualityExpr eq RelationExpr
     | EqualityExpr neq RelationExpr
 
-RelationExpr
-    : AdditiveExpr
+RelationExpr ->
+    | AdditiveExpr
     | RelationExpr lt AdditiveExpr
     | RelationExpr gt AdditiveExpr
     | RelationExpr lte AdditiveExpr
     | RelationExpr gte AdditiveExpr
 
-AdditiveExpr
-    : multiplicativeExpr
-    | AdditiveExpr add MultiplicativeExpr
-    | AdditiveExpr sub MultiplicativeExpr
+AdditiveExpr ->
+    | multiplicativeExpr
+    | AdditiveExpr plus MultiplicativeExpr
+    | AdditiveExpr minus MultiplicativeExpr
 
-MultiplicativeExpr
-    : ExponentialExpr
-    | MultiplicativeExpr mul ExponentialExpr
-    | MultiplicativeExpr div ExponentialExpr
+MultiplicativeExpr ->
+    | ExponentialExpr
+    | MultiplicativeExpr star ExponentialExpr
+    | MultiplicativeExpr slash ExponentialExpr
 
-ExponentialExpr
-    : UnaryExpr
+ExponentialExpr ->
+    | UnaryExpr
     | ExponentialExpr pow UnaryExpr
 
-UnaryExpr
-    : UnitExpr
-    | sub UnitExpr
+UnaryExpr ->
+    | UnitExpr
+    | minus UnitExpr
     | not UnitExpr
-    | mul UnitExpr
-    | addr UnitExpr
+    | star UnitExpr
+    | and UnitExpr
 
-UnitExpr
-    : par_open Expr par_close
+UnitExpr ->
+    | par_open Expr par_close
     | Call
     | integer
+    | boolean
     | character
     | string
     | identifier

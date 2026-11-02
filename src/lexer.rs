@@ -122,13 +122,12 @@ fn match_tokens(input: &str) -> MatchingTokens {
     add_if_exact_match(input, &mut tokens, "&", Token::And);
     add_if_exact_match(input, &mut tokens, "|", Token::Or);
     add_if_exact_match(input, &mut tokens, "!", Token::Not);
-    add_if_exact_match(input, &mut tokens, "+", Token::Add);
-    add_if_exact_match(input, &mut tokens, "-", Token::Sub);
-    add_if_exact_match(input, &mut tokens, "/", Token::Div);
-    add_if_exact_match(input, &mut tokens, "^", Token::Pow);
+    add_if_exact_match(input, &mut tokens, "+", Token::Plus);
+    add_if_exact_match(input, &mut tokens, "-", Token::Minus);
+    add_if_exact_match(input, &mut tokens, "*", Token::Star);
+    add_if_exact_match(input, &mut tokens, "/", Token::Slash);
+    add_if_exact_match(input, &mut tokens, "^", Token::Caret);
 
-    add_if_exact_match(input, &mut tokens, "*", Token::Asterisk);
-    add_if_exact_match(input, &mut tokens, "&", Token::Address);
 
     add_if_exact_match(input, &mut tokens, "(", Token::ParOpen);
     add_if_exact_match(input, &mut tokens, ")", Token::ParClose);
@@ -243,11 +242,11 @@ pub enum Token {
     And,
     Or,
     Not,
-    Add,
-    Sub,
-    Div,
-    Pow,
-    Asterisk,
+    Plus,
+    Minus,
+    Slash,
+    Caret,
+    Star,
     Address,
     ParOpen,
     ParClose,

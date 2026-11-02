@@ -25,23 +25,20 @@ fn main() {
         }
     };
 
-    for token in &tokens {
-        println!("{:?}", token);
-    }
+    // for token in &tokens {
+    //     println!("{:?}", token);
+    // }
 
-    let result = parser::parse_program(tokens);
-    
-    let program = match result {
+    let mut state = parser::ParseState::new(&tokens);
+    let program = match parser::parse_program(&mut state) {
         Ok(program) => program,
         Err(error) => {
-            eprintln!("Syntax error at {}:{}",
-                      error.line,
-                      error.column);
+            eprintln!("{error}");
             return;
         }
     };
-    
-    assembler::execute(todo!(), |c| print!("{}", c));
+
+    println!("AST:\n{:#?}", program);
 
     println!("{:?}", now.elapsed());
 }

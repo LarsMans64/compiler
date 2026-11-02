@@ -1,11 +1,13 @@
 pub type Program = Vec<Function>;
 
+#[derive(Debug)]
 pub struct Function {
     pub name: String,
     pub args: Vec<String>,
     pub body: Vec<Statement>,
 }
 
+#[derive(Debug)]
 pub enum Statement {
     Declaration { variable: String, expression: Expression },
     Assignment { variable: String, indices: Vec<Expression>, expression: Expression },
@@ -16,18 +18,20 @@ pub enum Statement {
     Body(Vec<Statement>),
 }
 
+#[derive(Debug)]
 pub enum Expression {
-    BinaryOperation { operator: BinaryOperator, left: Box<Expression>, right: Box<Expression> },
+    BinaryOperation { operator: BinaryOp, left: Box<Expression>, right: Box<Expression> },
     UnaryOperation { operator: UnaryOperator, operand: Box<Expression> },
     Call { function: String, args: Vec<Expression> },
-    Integer { value: i32 },
+    Integer { value: u32 },
     Boolean { value: bool },
     Character { value: char },
     String { value: String },
     Variable { name: String },
 }
 
-pub enum BinaryOperator {
+#[derive(Debug, Clone)]
+pub enum BinaryOp {
     Add,
     Subtract,
     Multiply,
@@ -43,9 +47,10 @@ pub enum BinaryOperator {
     Gte,
 }
 
+#[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Negate,
     Invert,
-    GetPointer,
-    DerefPointer,
+    AddressOf,
+    Dereference,
 }

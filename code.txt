@@ -1,7 +1,7 @@
 func a(b, c) {
     var hi = 1 + 3;
     var a = &hi;
-    a = @a;
+    a = *a;
     var c = "hallo";
     c[1 + hi] = 'a';
 
@@ -14,7 +14,7 @@ func a(b, c) {
     }
     else {}
 
-    while i < 4 { i++; }
+    while i < 4 { i = i + 1; }
 
     return file("yo.txt");
 }
