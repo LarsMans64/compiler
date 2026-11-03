@@ -1,3 +1,21 @@
+func add(a: int, b: int) -> int {
+    return a + b;
+}
+
+func main() {
+    var one = 1;
+    var two = 2;
+    var three: int = add(one, two);
+
+    println("hoera");
+
+    var pointer: &int = malloc(16);
+    pointer[0] = three;
+}
+
+// func println() {}
+
+/*
 func a(b, c) {
     var hi = 1 + 3;
     var a = &hi;
@@ -20,3 +38,4 @@ func a(b, c) {
 
     return 1-2-3;
 }
+*/

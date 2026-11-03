@@ -1,6 +1,6 @@
 === language ===
 
-func a(b, c) {
+func a(b, c) -> string {
     var hi = 1 + 3;
     var a = &hi;
     a = @a;
@@ -33,6 +33,8 @@ else = "else"
 while = "while"
 
 is = "="
+colon = ":"
+arrow = "->"
 comma = ","
 end = ";"
 
@@ -58,6 +60,10 @@ bracket_close = "]"
 brace_open = "{"
 brace_close = "}"
 
+boolean_type = "bool"
+integer_type = "int"
+character_type = "char"
+
 boolean = "true" | "false"
 integer = [0-9]*
 character = "'" !("'")* "'"
@@ -74,21 +80,23 @@ whitespace = " " | "\n"         -> ignore
 
 Program -> Function*
 
-Function -> func identifier Args Body
+Function -> func identifier Args (arrow Type)? Body
 
-Args -> par_open (identifier (comma identifier)*)? par_close
+Args -> par_open (Arg (comma Arg)*)? par_close
+Arg -> identifier colon Type
 
 Body -> brace_open Statement* brace_close
 
-Statement -> Decl end
-           | Assign end
-           | Call end
-           | Return end
-           | If
-           | While
-           | Body
+Statement -> 
+    | Decl end
+    | Assign end
+    | Call end
+    | Return end
+    | If
+    | While
+    | Body
 
-Decl -> var identifier is Expr
+Decl -> var identifier (colon Type) is Expr
 Assign -> identifier (bracket_open Expr bracket_close)* is Expr
 Call -> identifier par_open (Expr (comma Expr)*)? par_close
 Return -> return Expr
@@ -148,6 +156,13 @@ UnitExpr ->
     | character
     | string
     | identifier
+    
+Type ->
+    | bracket_open Type bracket_close
+    | and Type
+    | integer_type
+    | boolean_type
+    | char_type
 
 
 
@@ -167,11 +182,11 @@ UnitExpr ->
 
 program = function*
 
-function = identifier argument* body
+function = identifier argument* type? body
 
 identifier = string
 
-argument = identifier
+argument = identifier Type
 
 body = statement*
 
@@ -187,7 +202,7 @@ if = expression body body
 
 while = expression body
 
-declaration = identifier expression
+declaration = identifier type? expression
 
 assignment = identifier expression* expression
 
@@ -225,4 +240,20 @@ unaryoperator
     | &
     | *
 
+type
+    = array
+    | pointer
+    | integer
+    | boolean
+    | character
+    
+array = type
+pointer = type
+
+
+
+=== to do: ===
+
+structs
+global constants
 

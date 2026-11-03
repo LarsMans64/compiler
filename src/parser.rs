@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Expression, Function, Program, Statement, UnaryOperator};
+use crate::ast::{BinaryOp, Expression, Function, Program, Statement, Type, UnaryOperator};
 use crate::lexer::{PositionedToken, Token};
 
 pub type ParseError = String;
@@ -38,7 +38,7 @@ impl ParseState {
 }
 
 fn error_message(expected: &str, got: PositionedToken) -> String {
-    format!("expected {} at {}:{}, got {}", expected, got.line, got.column, got.token.show())
+    format!("Expected {} at {}:{}, got {}", expected, got.line, got.column, got.token.show())
 }
 
 pub fn parse_program(state: &mut ParseState) -> Result<Program, ParseError> {
@@ -54,8 +54,42 @@ fn parse_function(state: &mut ParseState) -> Result<Function, ParseError> {
     state.expect(Token::Function)?;
     let name = parse_identifier(state)?;
     let args = parse_args(state)?;
+    let return_type = if state.peek() == &Token::Arrow {
+        state.advance();
+        Some(parse_type(state)?)
+    } else {
+        None
+    };
     let body = parse_body(state)?;
-    Ok(Function { name, args, body })
+    Ok(Function { name, args, return_type, body })
+}
+
+fn parse_type(state: &mut ParseState) -> Result<Type, ParseError> {
+    match state.peek() {
+        Token::And => {
+            state.advance();
+            Ok(Type::Pointer(Box::new(parse_type(state)?)))
+        }
+        Token::BracketOpen => {
+            state.advance();
+            let typ = parse_type(state)?;
+            state.expect(Token::BracketClose)?;
+            Ok(Type::Array(Box::new(typ)))
+        }
+        Token::BooleanType => {
+            state.advance();
+            Ok(Type::Boolean)
+        },
+        Token::IntegerType => {
+            state.advance();
+            Ok(Type::Integer)
+        },
+        Token::CharacterType => {
+            state.advance();
+            Ok(Type::Character)
+        },
+        _ => Err(error_message("a type", state.advance()))
+    }
 }
 
 fn parse_body(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
@@ -77,10 +111,16 @@ fn parse_statement(state: &mut ParseState) -> Result<Statement, ParseError> {
         Token::Var => {
             state.advance();
             let name = parse_identifier(state)?;
+            let type_hint = if state.peek() == &Token::Colon {
+                state.advance();
+                Some(parse_type(state)?)
+            } else {
+                None
+            };
             state.expect(Token::Is)?;
             let expr = parse_expr(state)?;
             state.expect(Token::End)?;
-            Ok(Statement::Declaration {variable: name, expression: expr})
+            Ok(Statement::Declaration {variable: name, type_hint, expression: expr})
         }
         Token::Return => {
             state.advance();
@@ -148,11 +188,18 @@ fn parse_else(state: &mut ParseState) -> Result<Vec<Statement>, ParseError> {
     Ok(parse_body(state)?)
 }
 
-fn parse_args(state: &mut ParseState) -> Result<Vec<String>, ParseError> {
+fn parse_args(state: &mut ParseState) -> Result<Vec<(String, Type)>, ParseError> {
     state.expect(Token::ParOpen)?;
-    let args = parse_list(state, parse_identifier, Token::ParClose)?;
+    let args = parse_list(state, parse_arg, Token::ParClose)?;
     state.expect(Token::ParClose)?;
     Ok(args)
+}
+
+fn parse_arg(state: &mut ParseState) -> Result<(String, Type), ParseError> {
+    let name = parse_identifier(state)?;
+    state.expect(Token::Colon)?;
+    let typ = parse_type(state)?;
+    Ok((name, typ))
 }
 
 fn parse_identifier(state: &mut ParseState) -> Result<String, ParseError> {

@@ -14,6 +14,16 @@ pub struct LexerState {
 }
 
 impl LexerState {
+    fn new(input: &str) -> Self {
+        let mut string = String::from(input);
+        string.push('\n'); // line comments depend on \n after all lines
+        LexerState {
+            remaining: string,
+            line: 1,
+            column: 0,
+        }
+    }
+
     fn advance(&mut self, n: usize) {
         self.remaining = self.remaining[n..].to_string();
         self.column += n;
@@ -28,12 +38,7 @@ impl LexerState {
 
 pub fn process(input: &str) -> Result<Vec<PositionedToken>, LexerError> {
     let mut tokens: Vec<PositionedToken> = Vec::new();
-
-    let mut state = LexerState {
-        remaining: String::from(input),
-        line: 1,
-        column: 0,
-    };
+    let mut state = LexerState::new(input);
 
     while state.remaining.len() > 0 {
         if let Some('\n') = state.remaining.chars().next() {
@@ -41,8 +46,8 @@ pub fn process(input: &str) -> Result<Vec<PositionedToken>, LexerError> {
             continue;
         }
 
-        if let Some(ignore_size) = ignore(&state.remaining) {
-            state.advance(ignore_size);
+        if let Some(ignore_length) = ignore(&state.remaining) {
+            state.advance(ignore_length);
             continue;
         }
 
@@ -88,13 +93,25 @@ fn ignore(input: &String) -> Option<usize> {
         }
     }
 
-    // Check comment
+    // Check line comment
     let mut chars = input.chars();
     if let (Some('/'), Some('/')) = (chars.next(), chars.next()) {
         for (i, char) in chars.enumerate() {
             if char == '\n' {
                 return Some(i + 2);
             }
+        }
+    }
+
+    // Check block comment
+    let mut chars = input.chars();
+    if let (Some('/'), Some('*')) = (chars.next(), chars.next()) {
+        let mut end = false;
+        for (i, char) in chars.enumerate() {
+            if end && char == '/' {
+                return Some(i + 3);
+            }
+            end = char == '*';
         }
     }
 
@@ -120,6 +137,8 @@ fn match_tokens(input: &str) -> MatchingTokens {
     add_if_exact_match(input, &mut tokens, "while", Token::While);
 
     add_if_exact_match(input, &mut tokens, "=", Token::Is);
+    add_if_exact_match(input, &mut tokens, ":", Token::Colon);
+    add_if_exact_match(input, &mut tokens, "->", Token::Arrow);
     add_if_exact_match(input, &mut tokens, ",", Token::Comma);
     add_if_exact_match(input, &mut tokens, ";", Token::End);
 
@@ -145,6 +164,10 @@ fn match_tokens(input: &str) -> MatchingTokens {
     add_if_exact_match(input, &mut tokens, "]", Token::BracketClose);
     add_if_exact_match(input, &mut tokens, "{", Token::BraceOpen);
     add_if_exact_match(input, &mut tokens, "}", Token::BraceClose);
+
+    add_if_exact_match(input, &mut tokens, "bool", Token::BooleanType);
+    add_if_exact_match(input, &mut tokens, "int", Token::IntegerType);
+    add_if_exact_match(input, &mut tokens, "char", Token::CharacterType);
 
     add_if_exact_match(input, &mut tokens, "true", Token::Boolean(true));
     add_if_exact_match(input, &mut tokens, "false", Token::Boolean(false));
@@ -249,6 +272,8 @@ pub enum Token {
     Else,
     While,
     Is,
+    Colon,
+    Arrow,
     Comma,
     End,
     Eq,
@@ -271,6 +296,9 @@ pub enum Token {
     BracketClose,
     BraceOpen,
     BraceClose,
+    BooleanType,
+    IntegerType,
+    CharacterType,
     Boolean(bool),
     Integer(u32),
     Character(char),
@@ -289,6 +317,8 @@ impl Token {
             Token::Else => String::from("'else'"),
             Token::While => String::from("'while'"),
             Token::Is => String::from("'='"),
+            Token::Colon => String::from("':'"),
+            Token::Arrow => String::from("'->'"),
             Token::Comma => String::from("','"),
             Token::End => String::from("';'"),
             Token::Eq => String::from("'=='"),
@@ -311,6 +341,9 @@ impl Token {
             Token::BracketClose => String::from("']'"),
             Token::BraceOpen => String::from("'{'"),
             Token::BraceClose => String::from("'}'"),
+            Token::BooleanType => String::from("'bool'"),
+            Token::IntegerType => String::from("'int'"),
+            Token::CharacterType => String::from("'char'"),
             Token::Boolean(b) => if *b {String::from("'true'")} else {String::from("'false'")},
             Token::Integer(i) => format!("integer {}", i),
             Token::Character(c) => format!("character '{}'", c),

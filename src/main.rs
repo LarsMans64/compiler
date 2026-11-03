@@ -7,12 +7,15 @@ mod lexer;
 mod parser;
 mod ast;
 mod assembler;
+mod checker;
 
 fn main() {
     let now = Instant::now();
 
     let code = read_file("code.txt");
     let result = lexer::process(code.as_str());
+
+    println!("\n --- compiler output ---");
 
     let tokens = match result {
         Ok(tokens) => tokens,
@@ -25,20 +28,27 @@ fn main() {
         }
     };
 
-    for token in &tokens {
-        println!("{:?}", token);
-    }
+    // for token in &tokens {
+    //     println!("{:?}", token);
+    // }
 
     let mut state = parser::ParseState::new(tokens);
     let program = match parser::parse_program(&mut state) {
         Ok(program) => program,
         Err(error) => {
-            eprintln!("{error}");
+            eprintln!("Parsing error: {error}");
             return;
         }
     };
 
-    println!("AST:\n{:#?}", program);
+    // println!("AST:\n{:#?}", program);
+
+    if let Err(message) = checker::Checker::check_program(&program) {
+        eprintln!("Type error: {message}");
+        return;
+    };
+
+    println!("No type errors found");
 
     println!("{:?}", now.elapsed());
 }

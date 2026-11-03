@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use std::collections::HashMap;
 
 type Register = usize;
@@ -13,7 +15,7 @@ pub enum Instruction {
     Push(Register),
     Pop(Register),
     Jump(Offset),
-    Branch(Register, Offset),
+    BranchIfPositive(Register, Offset),
     BranchIfZero(Register, Offset),
     Malloc(Register, Register),
     Free(Register, Register),
@@ -120,12 +122,22 @@ fn execute_instruction(state: &mut ComputerState, instruction: &Instruction) {
         Instruction::Jump(o) => {
             state.pc += *o;
         }
-        Instruction::Branch(r, o) => {
-            if state.registers[*r] != 0 {  }
+        Instruction::BranchIfPositive(r, o) => {
+            if state.registers[*r] != 0 {
+                state.pc += *o;
+            }
         }
-        Instruction::BranchIfZero(r, o) => {}
-        Instruction::Malloc(n, to) => {}
-        Instruction::Free(a, n) => {}
+        Instruction::BranchIfZero(r, o) => {
+            if state.registers[*r] == 0 {
+                state.pc += *o;
+            }
+        }
+        Instruction::Malloc(n, to) => {
+            todo!()
+        }
+        Instruction::Free(a, n) => {
+            todo!()
+        }
         Instruction::Out(r) => state.next_output = state.registers[*r] as u8 as char,
     };
 }
