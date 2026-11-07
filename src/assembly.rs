@@ -1,11 +1,14 @@
 #![allow(warnings)]
 
-use std::collections::HashMap;
-
 type Register = usize;
 type Address = usize;
-type Offset = usize;
 type Value = u32;
+
+pub enum JumpTarget {
+    Instruction(usize),
+    Label(String),
+    Relative(usize),
+}
 
 pub enum Instruction {
     Operation(Operator, Register, Register, Register),
@@ -14,9 +17,9 @@ pub enum Instruction {
     LoadImmediate(Value, Register),
     Push(Register),
     Pop(Register),
-    Jump(Offset),
-    BranchIfPositive(Register, Offset),
-    BranchIfZero(Register, Offset),
+    Jump(JumpTarget),
+    BranchIfPositive(Register, JumpTarget),
+    BranchIfZero(Register, JumpTarget),
     Malloc(Register, Register),
     Free(Register, Register),
     Out(Register),
@@ -42,10 +45,9 @@ impl Operator {
 }
 
 struct ComputerState {
-    pc: Offset,
-    max_address: Address,
+    pc: usize,
     registers: [Value; 16],
-    memory: HashMap<Address, Value>,
+    memory: [u8; 2^20],
     stack_pointer: Address,
     next_output: char,
 }
@@ -54,31 +56,47 @@ impl ComputerState {
     fn new() -> ComputerState {
         ComputerState {
             pc: 0,
-            max_address: 2usize.pow(20),
             registers: [0; 16],
-            memory: HashMap::new(),
+            memory: [0; 2^20],
             stack_pointer: 0,
             next_output: 0 as char,
         }
     }
 
     fn get_mem(&mut self, address: &Address) -> Value {
-        *self.memory.get(address).unwrap_or(&0)
+        // *self.memory.get(*address).unwrap_or(&0);
+        todo!()
     }
 
     fn set_mem(&mut self, address: Address, value: Value) {
-        self.memory.insert(address, value);
+        // self.memory.insert(address, value);
+        todo!()
     }
 
     fn push(&mut self, value: Value) {
-        self.memory.insert(self.stack_pointer, value);
-        self.stack_pointer -= 1;
+        // self.memory.insert(self.stack_pointer, value);
+        // self.stack_pointer -= 1;
+        todo!()
     }
 
     fn pop(&mut self) -> Value {
-        let it = *self.memory.get(&self.stack_pointer).unwrap_or(&0);
-        self.stack_pointer += 1;
-        it
+        // let it = *self.memory.get(&self.stack_pointer).unwrap_or(&0);
+        // self.stack_pointer += 1;
+        todo!()
+    }
+    
+    fn jump(&mut self, target: &JumpTarget) {
+        match target {
+            JumpTarget::Instruction(index) => {
+                self.pc = *index;
+            }
+            JumpTarget::Label(label) => {
+                todo!()
+            }
+            JumpTarget::Relative(offset) => {
+                self.pc += *offset;
+            }
+        }
     }
 }
 
@@ -105,10 +123,10 @@ fn execute_instruction(state: &mut ComputerState, instruction: &Instruction) {
             state.registers[*to] = op.compute(state.registers[*a], state.registers[*b]);
         }
         Instruction::Load(a, r) => {
-            state.registers[*r] = *state.memory.get(a).unwrap_or(&0);
+            // state.registers[*r] = *state.memory[a];
         }
         Instruction::Store(r, a) => {
-            state.memory.insert(*a, state.registers[*r]);
+            // state.memory[*a] = state.registers[*r];
         }
         Instruction::LoadImmediate(a, r) => {
             state.registers[*r] = *a;
@@ -119,17 +137,17 @@ fn execute_instruction(state: &mut ComputerState, instruction: &Instruction) {
         Instruction::Pop(r) => {
             state.registers[*r] = state.pop();
         }
-        Instruction::Jump(o) => {
-            state.pc += *o;
+        Instruction::Jump(t) => {
+            state.jump(t);
         }
-        Instruction::BranchIfPositive(r, o) => {
+        Instruction::BranchIfPositive(r, t) => {
             if state.registers[*r] != 0 {
-                state.pc += *o;
+                state.jump(t);
             }
         }
-        Instruction::BranchIfZero(r, o) => {
+        Instruction::BranchIfZero(r, t) => {
             if state.registers[*r] == 0 {
-                state.pc += *o;
+                state.jump(t);
             }
         }
         Instruction::Malloc(n, to) => {

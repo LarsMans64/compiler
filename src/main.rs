@@ -6,8 +6,9 @@ use std::time::Instant;
 mod lexer;
 mod parser;
 mod ast;
-mod assembler;
+mod assembly;
 mod checker;
+mod lowerlevelthing;
 
 fn main() {
     let now = Instant::now();
@@ -48,7 +49,7 @@ fn main() {
         return;
     };
 
-    println!("No type errors found");
+    println!("No errors found");
 
     println!("{:?}", now.elapsed());
 }

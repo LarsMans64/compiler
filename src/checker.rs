@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Expression, Function, Program, Statement, Type, UnaryOperator};
+use crate::ast::{AssignmentTarget, BinaryOp, Call, Expression, Function, Program, Statement, Type, UnaryOperator};
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 
@@ -101,7 +101,7 @@ impl Checker {
 
                 if let Some(expected_type) = type_hint {
                     if &found_type != expected_type {
-                        return Err(format!("Conflicting types: expected {} but found {}", expected_type.show(), found_type.show()));
+                        return Err(format!("Conflicting types: expected \"{}\" but found \"{}\"", expected_type.show(), found_type.show()));
                     }
                 }
 
@@ -110,46 +110,15 @@ impl Checker {
                     typ: found_type
                 });
             }
-            Statement::Assignment { variable, indices, expression } => {
-                let Some(var) = self.query(variable) else {
-                    return Err(format!("Variable \"{}\" does not exist", variable))
-                };
-
-                let mut innermost_type = &var.typ;
-                for index in indices {
-                    let index_type = self.check_expression(index)?;
-                    if index_type != Type::Integer {
-                        return Err(format!("Type \"{}\" cannot be indexed by \"{}\"", innermost_type.show(), index_type.show()));
-                    }
-
-                    if let Type::Array(inner) | Type::Pointer(inner) = &innermost_type {
-                        innermost_type = inner
-                    } else {
-                        return Err(format!("Type \"{}\" cannot be indexed", innermost_type.show()));
-                    }
-                }
-
+            Statement::Assignment { target, expression } => {
+                let target_type = self.check_assignment_target(target)?;
                 let found_type = self.check_expression(expression)?;
-                if innermost_type != &found_type {
-                    return Err(format!("Cannot assign variable of type {} to {}", var.typ.show(), found_type.show()));
+                if target_type != found_type {
+                    return Err(format!("Cannot assign variable of type \"{}\" to \"{}\"", target_type.show(), found_type.show()));
                 }
             }
-            Statement::Call { function: name, args } => {
-                let Some(signature) = self.functions.get(name) else {
-                    return Err(format!("Function \"{}\" does not exist", name))
-                };
-                
-                if signature.args.len() != args.len() {
-                    return Err(format!("Function \"{}\" requires {} arguments but found {}", name, signature.args.len(), args.len()));
-                }
-
-                for i in 0..args.len() {
-                    let expected_type = &signature.args[i];
-                    let found_type = self.check_expression(&args[i])?;
-                    if expected_type != &found_type {
-                        return Err(format!("Invalid argument type: expected {} but found {}", expected_type.show(), found_type.show()));
-                    }
-                }
+            Statement::Call(call) => {
+                self.check_call(call)?;
             }
             Statement::Return(expression) => {
                 let found_type = match expression {
@@ -159,21 +128,21 @@ impl Checker {
                 if function.return_type != found_type {
                     let expected = function.return_type.clone().map_or("void".to_string(), |t| t.show());
                     let found = found_type.map_or("void".to_string(), |t| t.show());
-                    return Err(format!("Invalid return type: expected {} but found {}", expected, found));
+                    return Err(format!("Invalid return type: function requires \"{}\" but found \"{}\"", expected, found));
                 }
             }
             Statement::If { condition, then, otherwise } => {
                 let condition_type = self.check_expression(condition)?;
                 if condition_type != Type::Boolean {
-                    return Err(format!("Expected condition, found {}", condition_type.show()));
+                    return Err(format!("Expected condition, found \"{}\"", condition_type.show()));
                 }
-                
+
                 self.push();
                 for statement in then {
                     self.check_statement(statement, function)?;
                 }
                 self.pop();
-                
+
                 self.push();
                 for statement in otherwise {
                     self.check_statement(statement, function)?;
@@ -183,9 +152,9 @@ impl Checker {
             Statement::While { condition, then } => {
                 let condition_type = self.check_expression(condition)?;
                 if condition_type != Type::Boolean {
-                    return Err(format!("Expected condition, found {}", condition_type.show()));
+                    return Err(format!("Expected condition, found \"{}\"", condition_type.show()));
                 }
-                
+
                 self.push();
                 for statement in then {
                     self.check_statement(statement, function)?;
@@ -202,6 +171,36 @@ impl Checker {
         }
         Ok(())
     }
+    
+    fn check_assignment_target(&mut self, target: &AssignmentTarget) -> Result<Type, CheckerError> {
+        match target {
+            AssignmentTarget::Index(target, index) => {
+                let target_type = self.check_assignment_target(target)?;
+                let index_type = self.check_expression(index)?;
+                if index_type != Type::Integer {
+                    return Err(format!("Type \"{}\" cannot be indexed by \"{}\"", target_type.show(), index_type.show()))
+                }
+                
+                if let Type::Array(inner) = target_type {
+                    return Ok(*inner)
+                }
+                Err(format!("Type \"{}\" cannot be indexed", target_type.show()))
+            }
+            AssignmentTarget::Dereference(target) => {
+                let target_type = self.check_assignment_target(target)?;
+                if let Type::Pointer(inner) = target_type {
+                    return Ok(*inner)
+                }
+                Err(format!("Type \"{}\" cannot be indexed", target_type.show()))
+            }
+            AssignmentTarget::Variable(name) => {
+                let Some(var) = self.query(name) else {
+                    return Err(format!("Variable \"{}\" does not exist", name))
+                };
+                Ok(var.typ.clone())
+            }
+        }
+    }
 
     fn check_expression(&self, expr: &Expression) -> Result<Type, CheckerError> {
         match expr {
@@ -209,7 +208,7 @@ impl Checker {
                 let type1 = self.check_expression(e1)?;
                 let type2 = self.check_expression(e2)?;
                 match op {
-                    BinaryOp::Addition | BinaryOp::Subtraction | BinaryOp::Multiplication | BinaryOp::Division | BinaryOp::Exponentiation => {
+                    BinaryOp::Plus | BinaryOp::Minus | BinaryOp::Times | BinaryOp::DividedBy | BinaryOp::RaisedTo => {
                         if type1 == Type::Integer && type2 == Type::Integer {
                             return Ok(Type::Integer);
                         }
@@ -231,17 +230,17 @@ impl Checker {
                         }
                     }
                 };
-                Err(format!("Cannot perform {} to {} and {}", op.show(), type1.show(), type2.show()))
+                Err(format!("Cannot perform {} to \"{}\" and \"{}\"", op.show(), type1.show(), type2.show()))
             }
             Expression::UnaryOperation(op, expr) => {
                 let typ = self.check_expression(expr)?;
                 match op {
-                    UnaryOperator::Negate => {
+                    UnaryOperator::Minus => {
                         if typ == Type::Integer {
                             return Ok(Type::Integer);
                         }
                     }
-                    UnaryOperator::Invert => {
+                    UnaryOperator::Not => {
                         if typ == Type::Boolean {
                             return Ok(Type::Boolean);
                         }
@@ -255,29 +254,41 @@ impl Checker {
                         }
                     }
                 }
-                Err(format!("Cannot perform {} to {}", op.show(), typ.show()))
+                Err(format!("Cannot perform {} to \"{}\"", op.show(), typ.show()))
             }
-            Expression::Call(name, args) => {
-                let Some(signature) = self.functions.get(name) else {
-                    return Err(format!("Function \"{}\" does not exist", name))
-                };
-
-                if signature.args.len() != args.len() {
-                    return Err(format!("Function \"{}\" requires {} arguments but found {}", name, signature.args.len(), args.len()));
-                }
-
-                for i in 0..args.len() {
-                    let expected_type = &signature.args[i];
-                    let found_type = self.check_expression(&args[i])?;
-                    if expected_type != &found_type {
-                        return Err(format!("Invalid argument type: expected {} but found {}", expected_type.show(), found_type.show()));
+            Expression::Array(values) => {
+                let first_type = self.check_expression(values.first().unwrap())?;
+                for value in values.iter().skip(1) {
+                    let other_type = self.check_expression(value)?;
+                    if other_type != first_type {
+                        return Err(format!(
+                            "Array can't have more than one type: first type is \"{}\" but also found \"{}\"",
+                            first_type.show(),
+                            other_type.show(),
+                        ));
                     }
                 }
+                Ok(Type::Array(Box::new(first_type)))
+            }
+            Expression::Access(expr, index) => {
+                let expr_type = self.check_expression(expr)?;
+                let index_type = self.check_expression(index)?;
 
-                if let Some(t) = &signature.return_type {
-                    return Ok(t.clone());
+                let Type::Integer = &index_type else {
+                    return Err(format!("Type \"{}\" cannot be indexed by \"{}\"", expr_type.show(), index_type.show()));
+                };
+
+                let Type::Array(inner) = expr_type else {
+                    return Err(format!("Type \"{}\" cannot be indexed", expr_type.show()));
+                };
+
+                Ok(*inner)
+            }
+            Expression::Call(call) => {
+                if let Some(typ) = self.check_call(call)? {
+                    return Ok(typ)
                 }
-                Err(format!("Function \"{}\" has no return type", name))
+                Err(format!("Function \"{}\" has no return type", call.0))
             }
             Expression::Integer(_) => Ok(Type::Integer),
             Expression::Boolean(_) => Ok(Type::Boolean),
@@ -291,12 +302,32 @@ impl Checker {
             }
         }
     }
+    
+    fn check_call(&self, (name, args): &Call) -> Result<Option<Type>, CheckerError> {
+        let Some(signature) = self.functions.get(name) else {
+            return Err(format!("Function \"{}\" does not exist", name))
+        };
+
+        if signature.args.len() != args.len() {
+            return Err(format!("Function \"{}\" requires {} arguments but found {}", name, signature.args.len(), args.len()));
+        }
+
+        for i in 0..args.len() {
+            let expected_type = &signature.args[i];
+            let found_type = self.check_expression(&args[i])?;
+            if expected_type != &found_type {
+                return Err(format!("Invalid argument type: expected \"{}\" but found \"{}\"", expected_type.show(), found_type.show()));
+            }
+        }
+
+        Ok(signature.return_type.clone())
+    }
 }
 
 fn builtins() -> HashMap<String, FunctionSignature> {
     let builtins = [
-        FunctionSignature {name: "print".to_string(), args: vec![Type::Array(Box::new(Type::Character))], return_type: None},
-        FunctionSignature {name: "println".to_string(), args: vec![Type::Array(Box::new(Type::Character))], return_type: None},
+        FunctionSignature {name: "print".to_string(), args: vec![Type::Pointer(Box::new(Type::Character))], return_type: None},
+        FunctionSignature {name: "println".to_string(), args: vec![Type::Pointer(Box::new(Type::Character))], return_type: None},
         FunctionSignature {name: "malloc".to_string(), args: vec![Type::Integer], return_type: Some(Type::Pointer(Box::new(Type::Integer)))},
     ];
     builtins.into_iter().map(|s| (s.name.clone(), s)).collect()
