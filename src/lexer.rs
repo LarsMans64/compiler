@@ -148,9 +148,9 @@ fn match_tokens(input: &str) -> MatchingTokens {
     add_if_exact_match(input, &mut tokens, ">", Token::Gt);
     add_if_exact_match(input, &mut tokens, "<=", Token::Lte);
     add_if_exact_match(input, &mut tokens, ">=", Token::Gte);
-    add_if_exact_match(input, &mut tokens, "&", Token::And);
-    add_if_exact_match(input, &mut tokens, "|", Token::Or);
-    add_if_exact_match(input, &mut tokens, "!", Token::Not);
+    add_if_exact_match(input, &mut tokens, "&", Token::Amp);
+    add_if_exact_match(input, &mut tokens, "|", Token::Bar);
+    add_if_exact_match(input, &mut tokens, "!", Token::Excl);
     add_if_exact_match(input, &mut tokens, "+", Token::Plus);
     add_if_exact_match(input, &mut tokens, "-", Token::Minus);
     add_if_exact_match(input, &mut tokens, "*", Token::Star);
@@ -282,9 +282,9 @@ pub enum Token {
     Lt,
     Gte,
     Lte,
-    And,
-    Or,
-    Not,
+    Amp,
+    Bar,
+    Excl,
     Plus,
     Minus,
     Slash,
@@ -327,9 +327,9 @@ impl Token {
             Token::Lt => String::from("'<'"),
             Token::Gte => String::from("'>='"),
             Token::Lte => String::from("'<='"),
-            Token::And => String::from("'&'"),
-            Token::Or => String::from("'|'"),
-            Token::Not => String::from("'!'"),
+            Token::Amp => String::from("'&'"),
+            Token::Bar => String::from("'|'"),
+            Token::Excl => String::from("'!'"),
             Token::Plus => String::from("'+'"),
             Token::Minus => String::from("'-'"),
             Token::Slash => String::from("'/'"),

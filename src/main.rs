@@ -6,9 +6,10 @@ use std::time::Instant;
 mod lexer;
 mod parser;
 mod ast;
-mod assembly;
-mod checker;
-mod lowerlevelthing;
+mod ir;
+mod analysis;
+mod ir_generator;
+mod context;
 
 fn main() {
     let now = Instant::now();
@@ -44,10 +45,15 @@ fn main() {
 
     // println!("AST:\n{:#?}", program);
 
-    if let Err(message) = checker::Checker::check_program(&program) {
-        eprintln!("Type error: {message}");
-        return;
+    let result = match analysis::Checker::check_program(&program) {
+        Ok(result) => result,
+        Err(error) => {
+            eprintln!("{error}");
+            return;
+        }
     };
+
+    println!("{:#?}", result);
 
     println!("No errors found");
 

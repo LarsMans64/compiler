@@ -1,3 +1,5 @@
+use crate::context::DataSize;
+
 pub type Program = Vec<Function>;
 
 #[derive(Debug)]
@@ -16,7 +18,6 @@ pub enum Statement {
     Return(Option<Expression>),
     If { condition: Expression, then: Vec<Statement>, otherwise: Vec<Statement> },
     While { condition: Expression, then: Vec<Statement> },
-    Body(Vec<Statement>),
 }
 
 #[derive(Debug)]
@@ -35,15 +36,12 @@ pub enum Expression {
     Call(Call),
     Array(Vec<Expression>),
     Access(Box<Expression>, Box<Expression>),
+    AddressOf(String),
     Integer(u32),
     Boolean(bool),
     Character(char),
     String(String),
     Variable(String),
-}
-
-fn test() {
-    let expression = Expression::Integer(100);
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,9 +50,9 @@ pub enum BinaryOp {
     Minus,
     Times,
     DividedBy,
-    RaisedTo,
     And,
     Or,
+    Xor,
     Eq,
     Neq,
     Lt,
@@ -67,7 +65,6 @@ pub enum BinaryOp {
 pub enum UnaryOperator {
     Minus,
     Not,
-    AddressOf,
     Dereference,
 }
 
@@ -87,9 +84,9 @@ impl BinaryOp {
             BinaryOp::Minus => "-",
             BinaryOp::Times => "*",
             BinaryOp::DividedBy => "/",
-            BinaryOp::RaisedTo => "^",
             BinaryOp::And => "&",
             BinaryOp::Or => "|",
+            BinaryOp::Xor => "^",
             BinaryOp::Eq => "==",
             BinaryOp::Neq => "!=",
             BinaryOp::Lt => "<",
@@ -105,7 +102,6 @@ impl UnaryOperator {
         match self {
             UnaryOperator::Minus => "-",
             UnaryOperator::Not => "!",
-            UnaryOperator::AddressOf => "&",
             UnaryOperator::Dereference => "*",
         }.to_string()
     }
@@ -119,6 +115,16 @@ impl Type {
             Type::Character => String::from("char"),
             Type::Pointer(t) => format!("&{}", t.show()),
             Type::Array(t) => format!("[{}]", t.show()),
+        }
+    }
+    
+    pub fn size(&self) -> DataSize {
+        match self {
+            Type::Integer => 1,
+            Type::Boolean => 1,
+            Type::Character => 1,
+            Type::Pointer(_) => 1,
+            Type::Array(_) => 1,
         }
     }
 }

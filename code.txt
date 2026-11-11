@@ -9,11 +9,11 @@ func main() {
 
     println("hoera");
 
-    var pointer: &int = to_heap(20);
+    var pointer: &int = heap(20);
+    var truth = *pointer == 20;
     *pointer = three;
 
     var a: [int] = [1, 2, 3];
-
 }
 
 // func println() {}
